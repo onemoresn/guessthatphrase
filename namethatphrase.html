@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Guess the Phrase</title>
+    <!-- Link to the manifest file for PWA functionality -->
+    <link rel="manifest" href="manifest.json">
     <!-- Using a fun, game-like font -->
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
     <style>
@@ -167,6 +169,38 @@
             background: #c0392b;
         }
     </style>
+    <!-- The following script simulates the manifest.json file, which is required for PWAs -->
+    <script id="pwa-manifest">
+        const manifest = {
+            "name": "Guess the Phrase Game",
+            "short_name": "Phrase Game",
+            "description": "A fun game to guess common phrases!",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#1d976c",
+            "icons": [
+                {
+                    "src": "https://placehold.co/192x192/1d976c/ffffff?text=PG",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "https://placehold.co/512x512/1d976c/ffffff?text=PG",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type : 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+            manifestLink.setAttribute('href', manifestURL);
+        }
+    </script>
 </head>
 <body>
 
@@ -382,6 +416,65 @@
             // Start the first game
             newGame();
         };
+    </script>
+    <script>
+        // --- Service Worker Registration ---
+        // The service worker will handle caching for offline use.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+    <!-- A separate script for the service worker logic, which would typically be in sw.js -->
+    <script id="pwa-service-worker">
+        // This is the content that would be in a separate sw.js file
+        self.addEventListener('install', (event) => {
+            console.log('Service Worker installing.');
+            const cacheName = 'guess-the-phrase-cache-v1';
+            const filesToCache = [
+                '/',
+                '/index.html',
+                'https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap'
+            ];
+
+            event.waitUntil(
+                caches.open(cacheName).then((cache) => {
+                    console.log('Caching assets.');
+                    return cache.addAll(filesToCache).catch(err => {
+                        console.error('Failed to cache files:', err);
+                    });
+                })
+            );
+        });
+
+        self.addEventListener('fetch', (event) => {
+            event.respondWith(
+                caches.match(event.request).then((response) => {
+                    return response || fetch(event.request);
+                })
+            );
+        });
+    </script>
+    <!-- The following script is a workaround to make the service worker work in a single file environment -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swContent = document.getElementById('pwa-service-worker').textContent;
+            const swBlob = new Blob([swContent], {type: 'application/javascript'});
+            const swUrl = URL.createObjectURL(swBlob);
+
+            navigator.serviceWorker.register(swUrl, { scope: './' }).then(registration => {
+                console.log('Service Worker registered successfully!', registration);
+            }).catch(error => {
+                console.log('Service Worker registration failed.', error);
+            });
+        }
     </script>
 </body>
 </html>
